@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const TICK_RATE = 20;
@@ -21,7 +21,7 @@ const httpServer = createServer((req, res) => {
 const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
 function send(socket, message) {
-  if (socket.readyState === socket.OPEN) {
+  if (socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(message));
   }
 }
@@ -47,13 +47,13 @@ wss.on('connection', (socket) => {
   send(socket, {
     type: 'welcome',
     protocolVersion: 1,
-    player: { id: player.id, name: player.name, x: player.x, y: player.y },
-    players: [...players.values()].map(({ id: pid, name, x, y }) => ({ id: pid, name, x, y })),
+    player: publicPlayer(player),
+    players: [...players.values()].map(publicPlayer),
   });
 
   broadcast({
     type: 'player_joined',
-    player: { id: player.id, name: player.name, x: player.x, y: player.y },
+    player: publicPlayer(player),
   }, player.id);
 
   socket.on('message', (raw) => {
