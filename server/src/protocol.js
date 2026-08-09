@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export const CLIENT_MESSAGES = Object.freeze({
   PING: 'ping',
@@ -12,6 +12,7 @@ export const SERVER_MESSAGES = Object.freeze({
   PLAYER_UPDATED: 'player_updated',
   PLAYER_LEFT: 'player_left',
   WORLD_SNAPSHOT: 'world_snapshot',
+  MOVE_ACK: 'move_ack',
   PONG: 'pong',
   ERROR: 'error',
 });
