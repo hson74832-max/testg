@@ -4,6 +4,8 @@ import { renderInventory, renderOutfitMenu, renderShop, renderEquipment, renderS
 import { GameNetwork, NetworkState } from '../game/network';
 
 const movementKeys: Record<string, [number, number]> = { w:[0,-1], arrowup:[0,-1], s:[0,1], arrowdown:[0,1], a:[-1,0], arrowleft:[-1,0], d:[1,0], arrowright:[1,0] };
+const movementKeyNames = Object.keys(movementKeys);
+
 function drawNetworkPlayers(ctx: CanvasRenderingContext2D, state: GameState, networkState: NetworkState, w: number, h: number) {
   const ts=Math.ceil(Math.max(w,h)/21);
   for(const player of networkState.players.values()){
@@ -13,6 +15,7 @@ function drawNetworkPlayers(ctx: CanvasRenderingContext2D, state: GameState, net
     ctx.save();ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(sx,sy+ts*.43,ts*.22,ts*.08,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#4aa8ff';ctx.beginPath();ctx.arc(sx,sy,ts*.22,0,Math.PI*2);ctx.fill();ctx.fillStyle='#d9efff';ctx.beginPath();ctx.arc(sx,sy-ts*.12,ts*.12,0,Math.PI*2);ctx.fill();ctx.font=`${Math.max(10,Math.floor(ts*.32))}px monospace`;ctx.textAlign='center';ctx.fillStyle='#bfe3ff';ctx.fillText(player.name,sx,sy-ts*.48);ctx.restore();
   }
 }
+
 export default function NetworkGameCanvas(){
   const canvasRef=useRef<HTMLCanvasElement>(null),stateRef=useRef<GameState>(createGameState()),rafRef=useRef<number>(0),networkRef=useRef<GameNetwork|null>(null),networkStateRef=useRef<NetworkState>({status:'connecting',playerId:null,players:new Map(),lastServerTime:null});
   const [networkState,setNetworkState]=useState<NetworkState>(networkStateRef.current);
@@ -21,7 +24,14 @@ export default function NetworkGameCanvas(){
   useEffect(()=>{const state=stateRef.current;state.networkAuthoritativeMovement=networkState.status==='connected';const p=networkState.playerId?networkState.players.get(networkState.playerId):null;if(p&&(state.px!==p.x||state.py!==p.y)){state.prevPx=state.px;state.prevPy=state.py;state.px=p.x;state.py=p.y;state.lastStep=performance.now();state.moveProgress=0;state.camX=state.px;state.camY=state.py;}},[networkState]);
   const resize=useCallback(()=>{const canvas=canvasRef.current;if(!canvas)return;const dpr=window.devicePixelRatio||1;canvas.width=window.innerWidth*dpr;canvas.height=window.innerHeight*dpr;canvas.style.width=window.innerWidth+'px';canvas.style.height=window.innerHeight+'px';const ctx=canvas.getContext('2d');if(ctx)ctx.scale(dpr,dpr);},[]);
   useEffect(()=>{resize();window.addEventListener('resize',resize);return()=>window.removeEventListener('resize',resize);},[resize]);
-  useEffect(()=>{const loop=()=>{const canvas=canvasRef.current;if(!canvas)return;const ctx=canvas.getContext('2d');if(!ctx)return;const state=stateRef.current,now=performance.now(),net=networkStateRef.current;syncRefs(state);update(state,now);ctx.save();const dpr=window.devicePixelRatio||1;ctx.setTransform(dpr,0,0,dpr,0,0);const w=window.innerWidth,h=window.innerHeight;render(ctx,state,w,h);drawNetworkPlayers(ctx,state,net,w,h);renderInventory(ctx,state,w,h);renderOutfitMenu(ctx,state,w,h);renderShop(ctx,state,w,h);renderEquipment(ctx,state,w,h);renderSkillTree(ctx,state,w,h);renderStatsPanel(ctx,state,w,h,now);renderSocial(ctx,state,w,h);renderAutolootSettings(ctx,state,w,h);renderOptions(ctx,state,w,h);renderPushIndicator(ctx,state,w,h,now);renderFPS(ctx,now,state);ctx.restore();rafRef.current=requestAnimationFrame(loop);};rafRef.current=requestAnimationFrame(loop);return()=>cancelAnimationFrame(rafRef.current);},[]);
+  useEffect(()=>{const loop=()=>{const canvas=canvasRef.current;if(!canvas)return;const ctx=canvas.getContext('2d');if(!ctx)return;const state=stateRef.current,now=performance.now(),net=networkStateRef.current;syncRefs(state);
+    if(net.status==='connected'){
+      // The server owns movement while connected. Clear local movement intents so
+      // engine.update cannot move through a blocked tile before the next snapshot.
+      for(const key of movementKeyNames) state.keysDown.delete(key);
+      state.moveTarget=null;
+    }
+    update(state,now);ctx.save();const dpr=window.devicePixelRatio||1;ctx.setTransform(dpr,0,0,dpr,0,0);const w=window.innerWidth,h=window.innerHeight;render(ctx,state,w,h);drawNetworkPlayers(ctx,state,net,w,h);renderInventory(ctx,state,w,h);renderOutfitMenu(ctx,state,w,h);renderShop(ctx,state,w,h);renderEquipment(ctx,state,w,h);renderSkillTree(ctx,state,w,h);renderStatsPanel(ctx,state,w,h,now);renderSocial(ctx,state,w,h);renderAutolootSettings(ctx,state,w,h);renderOptions(ctx,state,w,h);renderPushIndicator(ctx,state,w,h,now);renderFPS(ctx,now,state);ctx.restore();rafRef.current=requestAnimationFrame(loop);};rafRef.current=requestAnimationFrame(loop);return()=>cancelAnimationFrame(rafRef.current);},[]);
   useEffect(()=>{const onKeyDown=(e:KeyboardEvent)=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();const movement=movementKeys[e.key.toLowerCase()],net=networkStateRef.current;if(movement&&net.status==='connected'){networkRef.current?.sendMove(movement[0],movement[1]);return;}handleKeyDown(stateRef.current,e.key,performance.now());};const onKeyUp=(e:KeyboardEvent)=>{const movement=movementKeys[e.key.toLowerCase()];if(movement&&networkStateRef.current.status==='connected')return;handleKeyUp(stateRef.current,e.key);};window.addEventListener('keydown',onKeyDown);window.addEventListener('keyup',onKeyUp);return()=>{window.removeEventListener('keydown',onKeyDown);window.removeEventListener('keyup',onKeyUp);};},[]);
   const onPointerDown=useCallback((e:React.PointerEvent<HTMLCanvasElement>)=>{const canvas=canvasRef.current;if(!canvas)return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top,now=performance.now();handlePointerDown(stateRef.current,x,y,rect.width,rect.height,now);if(!e.altKey)handleClick(stateRef.current,x,y,rect.width,rect.height,now);},[]);
   const onPointerUp=useCallback((e:React.PointerEvent<HTMLCanvasElement>)=>{const canvas=canvasRef.current;if(!canvas)return;const rect=canvas.getBoundingClientRect();handlePointerUp(stateRef.current,e.clientX-rect.left,e.clientY-rect.top,rect.width,rect.height,performance.now());},[]);
