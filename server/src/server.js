@@ -21,17 +21,11 @@ const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 function send(socket, message) { if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message)); }
 function broadcast(message, exceptId = null) { for (const player of players.values()) if (player.id !== exceptId) send(player.socket, message); }
 function publicPlayer(player) { return { id: player.id, name: player.name, x: player.x, y: player.y }; }
-function canMoveTo(player, x, y) {
-  if (!isWalkableTile(world.terrain, world.objects, x, y)) return false;
-  for (const other of players.values()) {
-    if (other.id !== player.id && other.x === x && other.y === y) return false;
-  }
-  return true;
-}
+function canMoveTo(player, x, y) { if (!isWalkableTile(world.terrain, world.objects, x, y)) return false; for (const other of players.values()) if (other.id !== player.id && other.x === x && other.y === y) return false; return true; }
 
 wss.on('connection', (socket) => {
   const id = randomUUID();
-  const player = { id, name: `Adventurer-${id.slice(0, 4)}`, x: START_X, y: START_Y, socket, lastMoveAt: 0, nextMoveSeq: 1 };
+  const player = { id, name: `Adventurer-${id.slice(0, 4)}`, x: START_X, y: START_Y, socket, lastMoveAt: 0, lastMoveSeq: 0 };
   players.set(id, player);
   send(socket, { type: SERVER_MESSAGES.WELCOME, protocolVersion: PROTOCOL_VERSION, player: publicPlayer(player), players: [...players.values()].map(publicPlayer) });
   broadcast({ type: SERVER_MESSAGES.PLAYER_JOINED, player: publicPlayer(player) }, player.id);
@@ -41,10 +35,10 @@ wss.on('connection', (socket) => {
     if (message.type === CLIENT_MESSAGES.PING) { send(socket, { type: SERVER_MESSAGES.PONG, serverTime: Date.now() }); return; }
     if (message.type === CLIENT_MESSAGES.SET_NAME) { const name = typeof message.name === 'string' ? message.name.trim().slice(0, 20) : ''; if (!name) return; player.name = name; broadcast({ type: SERVER_MESSAGES.PLAYER_UPDATED, player: publicPlayer(player) }); return; }
     if (message.type === CLIENT_MESSAGES.MOVE) {
-      const seq = Number(message.seq);
-      const dx = Number(message.dx), dy = Number(message.dy);
+      const seq = Number(message.seq), dx = Number(message.dx), dy = Number(message.dy);
       const ack = (accepted, reason = null) => send(socket, { type: SERVER_MESSAGES.MOVE_ACK, seq: Number.isSafeInteger(seq) ? seq : 0, accepted, reason, player: publicPlayer(player), serverTime: Date.now() });
-      if (!Number.isSafeInteger(seq) || seq <= 0) { ack(false, MOVE_REJECT_REASON.INVALID); return; }
+      if (!Number.isSafeInteger(seq) || seq <= player.lastMoveSeq) { ack(false, MOVE_REJECT_REASON.INVALID); return; }
+      player.lastMoveSeq = seq;
       const now = Date.now();
       if (now - player.lastMoveAt < MOVE_INTERVAL_MS) { ack(false, MOVE_REJECT_REASON.RATE_LIMITED); return; }
       if (!isValidStep(dx, dy)) { ack(false, MOVE_REJECT_REASON.INVALID); return; }
