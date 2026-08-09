@@ -3,6 +3,7 @@ export const PROTOCOL_VERSION = 1;
 export const CLIENT_MESSAGES = Object.freeze({
   PING: 'ping',
   SET_NAME: 'set_name',
+  MOVE: 'move',
 });
 
 export const SERVER_MESSAGES = Object.freeze({
