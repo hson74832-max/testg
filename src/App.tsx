@@ -1,5 +1,5 @@
-import GameCanvas from './components/GameCanvas';
+import NetworkGameCanvas from './components/NetworkGameCanvas';
 
 export default function App() {
-  return <GameCanvas />;
+  return <NetworkGameCanvas />;
 }
