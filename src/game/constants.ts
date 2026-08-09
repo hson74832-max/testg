@@ -2,7 +2,9 @@
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════
 
-export const WORLD_SIZE = 256;
+import { WORLD_SIZE as SHARED_WORLD_SIZE, TERRAIN as SHARED_TERRAIN, OBJECT as SHARED_OBJECT } from '../../shared/world.js';
+
+export const WORLD_SIZE = SHARED_WORLD_SIZE;
 export const VIEW_RADIUS = 10;
 export const VIEW_TILES = VIEW_RADIUS * 2 + 1;
 
@@ -15,15 +17,8 @@ export const COMBAT_TIMEOUT = 5000;
 export const HUD_FADE_TIME = 5000;
 export const HUD_FADE_DUR = 2000;
 
-export const TERRAIN = {
-  WATER: 0, SAND: 1, GRASS: 2, DARK_GRASS: 3, DIRT: 4,
-  STONE: 5, SWAMP: 6, STONE_FLOOR: 7, ROAD: 8
-} as const;
-
-export const OBJECT = {
-  NONE: 0, TREE: 1, ROCK: 2, BUSH: 3, CACTUS: 4,
-  WALL: 5, CAMPFIRE: 6, CHEST: 7, STAIR_DOWN: 8, RUINS: 9
-} as const;
+export const TERRAIN = SHARED_TERRAIN;
+export const OBJECT = SHARED_OBJECT;
 
 export const TERRAIN_COLORS: Record<number, [string, string, string]> = {
   [TERRAIN.WATER]:       ['#2a5070', '#1e4060', '#3a6888'],
