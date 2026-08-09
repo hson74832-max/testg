@@ -1,5 +1,5 @@
 import { GameState } from './types';
-import { WORLD_SIZE } from './constants';
+import { WORLD_SIZE, OBJECT } from './constants';
 import { createWorld } from '../../shared/world.js';
 
 export function generateWorld(state: GameState) {
@@ -11,8 +11,8 @@ export function generateWorld(state: GameState) {
   // Keep the existing spawn-area guarantee: clear only random blocking objects.
   for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
     const i = (state.py + dy) * WORLD_SIZE + (state.px + dx);
-    if (state.objects[i] === 1 || state.objects[i] === 2 || state.objects[i] === 3)
-      state.objects[i] = 0;
+    if (state.objects[i] === OBJECT.TREE || state.objects[i] === OBJECT.ROCK || state.objects[i] === OBJECT.BUSH)
+      state.objects[i] = OBJECT.NONE;
   }
 }
 
