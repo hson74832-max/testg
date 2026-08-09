@@ -1,11 +1,6 @@
 export const PROTOCOL_VERSION = 1 as const;
 
-export type PlayerSnapshot = {
-  id: string;
-  name: string;
-  x: number;
-  y: number;
-};
+export type PlayerSnapshot = { id: string; name: string; x: number; y: number };
 
 export type ServerMessage =
   | { type: 'welcome'; protocolVersion: number; player: PlayerSnapshot; players: PlayerSnapshot[] }
@@ -18,4 +13,5 @@ export type ServerMessage =
 
 export type ClientMessage =
   | { type: 'ping' }
-  | { type: 'set_name'; name: string };
+  | { type: 'set_name'; name: string }
+  | { type: 'move'; dx: -1 | 0 | 1; dy: -1 | 0 | 1 };
